@@ -127,10 +127,8 @@ const starknetService = {
             if (loginButtonContainer && loginButton) {
                 if (this.isDappLoggedIn) {
                     // User has completed dApp sign-in
-                    loginButton.textContent = 'Signed In';
-                    loginButton.disabled = true; // Prevent re-clicking
-                    loginButtonContainer.style.display = 'inline-block'; // Or hide if preferred: 'none'
-                    console.log("[StarkTask] UI: User is DApp Logged In. Login button shows 'Signed In'.");
+                    loginButtonContainer.style.display = 'none'; // <-- CHANGE: Hide button when logged in
+                    console.log("[StarkTask] UI: User is DApp Logged In. Login button is hidden.");
                 } else {
                     // User has connected wallet, but not yet dApp signed-in
                     loginButton.textContent = 'Login (Sign)';

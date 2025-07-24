@@ -37,11 +37,12 @@
         <div class="main-menu" id="mainMenu">
             <button id="logTaskBtn">Log New Influence Task</button>
             <button id="chooseTaskBtn" class="secondary-action">View Available Tasks</button>
+            <button id="viewMyTasksBtn" class="secondary-action">View My Tasks</button>
         </div>
 
         <div id="logTaskModal" class="modal">
             <div class="modal-content">
-                <span class="close-button" id="closeLogTaskModal">&times;</span>
+                <span class="close-button" id="closeLogTaskModal">×</span>
                 <h2>Log a New Influence Task</h2>
                 <form id="logTaskForm">
                     <div class="form-group">
@@ -121,6 +122,33 @@
                     </thead>
                     <tbody id="taskTableBody">
                         </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div id="myTasksView" style="display:none;">
+            <h2>My Tasks</h2>
+            <p style="text-align: center;">This section shows tasks you have created or accepted.</p>
+            <div id="myTaskTableContainer">
+                <table class="task-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Type</th>
+                            <th>Item</th>
+                            <th>Qty</th>
+                            <th>Payment</th>
+                            <th>Asteroid ID</th>
+                            <th>Plot ID</th>
+                            <th>Deadline</th>
+                            <th>Days Left</th>
+                            <th>Status</th>
+                            <th>Creator</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="myTaskTableBody">
+                    </tbody>
                 </table>
             </div>
         </div>

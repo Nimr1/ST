@@ -194,10 +194,13 @@ var starknetService = window.starknetService || {};
 document.addEventListener('DOMContentLoaded', () => {
     const logTaskBtn = document.getElementById('logTaskBtn');
     const chooseTaskBtn = document.getElementById('chooseTaskBtn');
+    const viewMyTasksBtn = document.getElementById('viewMyTasksBtn');
     const logTaskModal = document.getElementById('logTaskModal');
     const closeLogTaskModalBtn = document.getElementById('closeLogTaskModal');
     const chooseTaskView = document.getElementById('chooseTaskView');
+    const myTasksView = document.getElementById('myTasksView');
     const taskTableBody = document.getElementById('taskTableBody');
+    const myTaskTableBody = document.getElementById('myTaskTableBody');
     const tasksAcceptedStat = document.getElementById('tasksAcceptedStat');
     const tasksSubmittedStat = document.getElementById('tasksSubmittedStat');
     const successRateStat = document.getElementById('successRateStat');
@@ -309,17 +312,29 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (closeLogTaskModalBtn) closeLogTaskModalBtn.addEventListener('click', () => { if (logTaskModal) logTaskModal.style.display = 'none'; });
     window.addEventListener('click', (event) => { if (event.target == logTaskModal) logTaskModal.style.display = 'none'; });
+
     if (chooseTaskBtn) {
         chooseTaskBtn.addEventListener('click', () => {
-            if (chooseTaskView) {
-                chooseTaskView.style.display = chooseTaskView.style.display === 'none' ? 'block' : 'none'; // Toggle view
-            }
+            if (chooseTaskView) chooseTaskView.style.display = 'block';
+            if (myTasksView) myTasksView.style.display = 'none';
             if (logTaskModal) logTaskModal.style.display = 'none';
-            if (chooseTaskView.style.display === 'block') {
-                 renderTasks(); // Only render if view becomes visible
-            }
+            renderTasks();
         });
     }
+
+    if (viewMyTasksBtn) {
+        viewMyTasksBtn.addEventListener('click', () => {
+            if (!starknetService.address) {
+                alert("Please connect your wallet to see your tasks.");
+                return;
+            }
+            if (chooseTaskView) chooseTaskView.style.display = 'none';
+            if (myTasksView) myTasksView.style.display = 'block';
+            if (logTaskModal) logTaskModal.style.display = 'none';
+            renderMyTasks();
+        });
+    }
+
 
     if (logTaskForm) {
         logTaskForm.addEventListener('submit', function(event) {
@@ -385,7 +400,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 asteroidId: asteroidId, plotId: plotId,
                 deadline: new Date(deadlineTimestamp * 1000).toISOString(),
                 status: 'Open (Local)',
-                creator: starknetService.address.length > 10 ? starknetService.address.substring(0,8) + "..." : starknetService.address,
+                creator: starknetService.address, // <-- CHANGE: Store full address
                 assignee: null,
             };
             tasks.unshift(tempFrontendTask);
@@ -410,6 +425,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const dLineDateOnly = new Date(deadlineDate.getFullYear(), deadlineDate.getMonth(), deadlineDate.getDate());
         const diffTime = dLineDateOnly - today;
         return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    }
+
+    function shortenAddress(address) {
+        if (!address) return 'N/A';
+        return address.length > 10 ? `${address.substring(0, 6)}...${address.substring(address.length - 4)}` : address;
     }
 
     function renderTasks() {
@@ -443,7 +463,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 else if (daysLeft <= 2) { daysLeftCell.style.color = '#FF8C00'; }
             }
             row.insertCell().textContent = task.status;
-            row.insertCell().textContent = task.creator || 'N/A';
+            row.insertCell().textContent = shortenAddress(task.creator); // <-- CHANGE: Shorten for display
             const actionCell = row.insertCell();
             if (task.status === 'Open' || task.status === 'Open (Local)') {
                 if (starknetService.address && task.creator?.toLowerCase() !== starknetService.address.toLowerCase()) {
@@ -454,10 +474,70 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (task.status === 'Accepted' && starknetService.address && task.assignee?.toLowerCase() === starknetService.address.toLowerCase()) {
                 const submitButton = document.createElement('button'); submitButton.textContent = 'Submit Work';
                 submitButton.onclick = () => submitTaskCompletion(task.id); actionCell.appendChild(submitButton);
-            } else if (task.status.includes('Accepted')) { actionCell.textContent = 'In Progress by '+(task.assignee && task.assignee.length > 10 ? task.assignee.substring(0,8)+'...' : task.assignee || 'other'); }
+            } else if (task.status.includes('Accepted')) { actionCell.textContent = 'In Progress by ' + shortenAddress(task.assignee); } // <-- CHANGE: Shorten for display
             else { actionCell.textContent = task.status; } // Handles 'Expired', 'Completed', etc.
         });
         updateSortIndicators();
+    }
+
+    function renderMyTasks() {
+        if (!myTaskTableBody) return;
+        myTaskTableBody.innerHTML = '';
+        if (!starknetService.address) {
+            const row = myTaskTableBody.insertRow();
+            const cell = row.insertCell();
+            cell.colSpan = 12;
+            cell.textContent = "Please connect your wallet to view your tasks.";
+            cell.style.textAlign = "center";
+            return;
+        }
+
+        const myTasks = tasks.filter(task =>
+            (task.creator && task.creator.toLowerCase() === starknetService.address.toLowerCase()) ||
+            (task.assignee && task.assignee.toLowerCase() === starknetService.address.toLowerCase())
+        );
+
+        if (myTasks.length === 0) {
+            const row = myTaskTableBody.insertRow();
+            const cell = row.insertCell();
+            cell.colSpan = 12;
+            cell.textContent = "You have not created or accepted any tasks yet.";
+            cell.style.textAlign = "center";
+            return;
+        }
+
+        myTasks.forEach(task => {
+            const row = myTaskTableBody.insertRow();
+            // This is a simplified render; for a full implementation, this should mirror the main render function's structure.
+            row.insertCell().textContent = task.id;
+            row.insertCell().textContent = task.requestType;
+            row.insertCell().textContent = task.itemName;
+            row.insertCell().textContent = task.itemQuantity !== null ? task.itemQuantity : 'N/A';
+            row.insertCell().textContent = `${task.paymentAmount} ${task.paymentMethod}`;
+            row.insertCell().textContent = task.asteroidId;
+            row.insertCell().textContent = task.plotId !== null ? task.plotId : 'N/A';
+            row.insertCell().textContent = new Date(task.deadline).toLocaleString([], { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+            const daysLeft = getDaysTillDeadline(task.deadline);
+            const daysLeftCell = row.insertCell();
+            daysLeftCell.textContent = daysLeft;
+            if (typeof daysLeft === 'number' && daysLeft < 0) {
+                 if (task.status === 'Open' || task.status === 'Accepted' || task.status === 'Open (Local)') task.status = 'Expired';
+            }
+            row.insertCell().textContent = task.status;
+            row.insertCell().textContent = shortenAddress(task.creator);
+
+            const actionCell = row.insertCell();
+             if (task.status === 'Accepted' && task.assignee?.toLowerCase() === starknetService.address.toLowerCase()) {
+                const submitButton = document.createElement('button');
+                submitButton.textContent = 'Submit Work';
+                submitButton.onclick = () => submitTaskCompletion(task.id);
+                actionCell.appendChild(submitButton);
+            } else if (task.status === 'Open (Local)' || (task.creator && task.creator.toLowerCase() === starknetService.address.toLowerCase())) {
+                 actionCell.textContent = 'Your Task';
+            } else {
+                actionCell.textContent = task.status;
+            }
+        });
     }
 
     function setupFiltering() {
@@ -541,18 +621,24 @@ document.addEventListener('DOMContentLoaded', () => {
         if (task && (task.status === 'Open' || task.status === 'Open (Local)')) {
             alert(`TODO: Implement on-chain 'acceptTask(${taskId})'. Simulating frontend update.`);
             task.status = 'Accepted';
-            task.assignee = starknetService.address.length > 10 ? starknetService.address.substring(0,8) + "..." : starknetService.address;;
-            userStats.accepted++; updateUserStatsUI(); renderTasks();
+            task.assignee = starknetService.address; // <-- CHANGE: Store full address
+            userStats.accepted++;
+            updateUserStatsUI();
+            renderTasks();
+            renderMyTasks(); // Re-render my tasks view as well
         }
     }
     function submitTaskCompletion(taskId) {
         console.log(`Attempting to submit task ${taskId}`);
         if (!starknetService.address) { alert("Please connect wallet to submit tasks."); return; }
-        const task = tasks.find(t => t.id === taskId && task.assignee?.toLowerCase() === (starknetService.address.length > 10 ? starknetService.address.substring(0,8) + "..." : starknetService.address).toLowerCase());
+        const task = tasks.find(t => t.id === taskId && t.assignee?.toLowerCase() === starknetService.address.toLowerCase());
         if (task && task.status === 'Accepted') {
             alert(`TODO: Implement on-chain 'submitTaskCompletion(${taskId})'. Simulating frontend update.`);
             task.status = 'Completed (Pending Review)';
-            userStats.submitted++; updateUserStatsUI(); renderTasks();
+            userStats.submitted++;
+            updateUserStatsUI();
+            renderTasks();
+            renderMyTasks();
         }
     }
     function updateUI() {
@@ -573,9 +659,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // Listen to custom wallet events from starknet.js to update UI
     document.addEventListener('starknetWallet:walletConnected', () => {
         if (userStatsSection) userStatsSection.style.display = 'block';
+        renderTasks(); // Re-render tasks to show correct actions
     });
     document.addEventListener('starknetWallet:walletDisconnected', () => {
         if (userStatsSection) userStatsSection.style.display = 'none';
+        if (chooseTaskView) chooseTaskView.style.display = 'none';
+        if (myTasksView) myTasksView.style.display = 'none';
+        renderTasks(); // Re-render tasks to hide actions
     });
 
 
